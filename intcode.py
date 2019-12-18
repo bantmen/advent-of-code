@@ -2,6 +2,9 @@ from itertools import cycle
 from collections import defaultdict
 
 
+MODES = range(3)
+POSITION_MODE, IMMEDIATE_MODE, RELATIVE_MODE = MODES
+
 opcode_func = dict()
 
 
@@ -27,7 +30,8 @@ class Intcode:
         self.it = None
 
     def write(self, val, address, mode):
-        offset = self.relative_base if mode == 2 else 0
+        assert mode in (POSITION_MODE, RELATIVE_MODE), mode
+        offset = self.relative_base if mode == RELATIVE_MODE else 0
         self.l[address + offset] = val
 
     @assign_opcode(1)
@@ -105,20 +109,17 @@ class Intcode:
         inst //= 100
         modes = []
         for _ in range(3):
-            assert inst % 10 in (0, 1, 2), f"Unknown mode: {inst % 10}"
+            assert inst % 10 in MODES, f"Unknown mode: {inst % 10}"
             modes.append(inst % 10)
             inst //= 10
         return opcode, modes
 
     def get_operand(self, l, param, mode):
-        if mode == 0:
-            # position
+        if mode == POSITION_MODE:
             return l[param]
-        elif mode == 1:
-            # immediate
+        elif mode == IMMEDIATE_MODE:
             return param
-        elif mode == 2:
-            # relative
+        elif mode == RELATIVE_MODE:
             return l[self.relative_base + param]
         else:
             assert False, mode

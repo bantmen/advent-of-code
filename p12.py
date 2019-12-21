@@ -48,15 +48,6 @@ def solve_1(pos, vel):
     print("1) Answer:", total_energy(pos, vel))
 
 
-def array_equal(a1, a2):
-    # a1 and a2 must have the same shape.
-    for row in range(a1.shape[0]):
-        for col in range(a1.shape[1]):
-            if a1[row, col] != a2[row, col]:
-                return False
-    return True
-
-
 def find_repeat(pos, vel):
     initial_pos, initial_vel = pos.copy(), vel.copy()
     gravity = np.empty(pos.shape, dtype=pos.dtype)

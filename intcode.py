@@ -132,7 +132,6 @@ class Intcode:
     def run_program(self):
         while True:
             opcode, modes = self.get_opcode_and_modes(self.l[self.idx])
-            # print('op', opcode, modes[0])
             self.idx = opcode_func[opcode](self, self.l, self.idx, modes)
             if self.new_output:
                 yield self.outputs[-1]

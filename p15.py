@@ -1,7 +1,6 @@
 # https://adventofcode.com/2019/day/15
 
 from intcode import Intcode, read_program
-import curses
 from collections import defaultdict
 
 
@@ -17,21 +16,6 @@ def apply_delta(coord, delta):
 
 def opposite_delta(delta):
     return -delta[0], -delta[1]
-
-
-coord = (0, 0)
-grid = {coord: SUCCESS_STATUS}
-dest_coords = []
-
-
-def add_new_coords():
-    for delta in delta_dir:
-        c = apply_delta(coord, delta)
-        if c not in grid:
-            dest_coords.append(c)
-
-
-add_new_coords()
 
 
 def sign(x):
@@ -50,12 +34,7 @@ def get_deltas(from_c, to_c):
         yield 0, sign(diff_c[1])
 
 
-# stdscr = curses.initscr()
-# curses.noecho()
-# curses.cbreak()
-
-
-def render_sparse_grid(grid, coord, to_coord):
+def render_sparse_grid(grid, coord):
     min_x = min(t[0] for t in grid)
     max_x = max(t[0] for t in grid)
     min_y = min(t[1] for t in grid)
@@ -78,14 +57,12 @@ def render_sparse_grid(grid, coord, to_coord):
             assert False
         x, y = x - min_x, y - min_y
         l[y][x] = v
-    # s = f"Current coord: {coord}, To coord: {to_coord}, Remaining: {len(dest_coords)}\n\n"
     for row in l:
         print(" ".join(c for c in row))
-        # s += " ".join(c for c in row) + "\n"
-    # print(s)
-    # stdscr.addstr(0, 0, s)
-    # stdscr.refresh()
 
+
+coord = (0, 0)
+grid = {coord: SUCCESS_STATUS}
 
 intcode = Intcode(read_program("15.txt"))
 it = intcode.run_program()
@@ -95,13 +72,12 @@ min_steps = defaultdict(lambda: float("inf"))
 
 
 def travel(coord, steps=0):
-    deltas = remaining_deltas[coord]
-
     m = min(min_steps[coord], steps)
     for delta in delta_dir:
         m = min(m, min_steps[apply_delta(coord, delta)] + 1)
     min_steps[coord] = m
 
+    deltas = remaining_deltas[coord]
     while len(deltas) > 0:
         delta = deltas.pop()
         new_coord = apply_delta(coord, delta)
@@ -116,7 +92,7 @@ def travel(coord, steps=0):
 
 travel(coord)
 
-render_sparse_grid(grid, coord, (-1, -1))
+render_sparse_grid(grid, coord)
 
 oxygen_coord = None
 for k, v in grid.items():
@@ -124,4 +100,4 @@ for k, v in grid.items():
         oxygen_coord = k
         break
 
-print(min_steps[oxygen_coord])
+print("1) Answer", min_steps[oxygen_coord])

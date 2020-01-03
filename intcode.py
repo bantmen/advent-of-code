@@ -18,7 +18,7 @@ def assign_opcode(opcode):
 
 class Intcode:
     def __init__(self, l, inputs=[]):
-        self.l = Program(l.copy())
+        self.l = defaultdict(lambda: 0, {i: l[i] for i in range(len(l))})
         self.idx = 0
         self.inputs = inputs
         self.outputs = []
@@ -142,25 +142,6 @@ class Intcode:
 
     def program_output(self):
         return list(self.run_program())
-
-
-class Program:
-    def __init__(self, l):
-        self.l = l
-        self.d = defaultdict(lambda: 0)
-
-    def __getitem__(self, idx):
-        assert idx >= 0, idx
-        if len(self.l) > idx:
-            return self.l[idx]
-        return self.d[idx]
-
-    def __setitem__(self, idx, val):
-        assert idx >= 0, idx
-        if len(self.l) > idx:
-            self.l[idx] = val
-        else:
-            self.d[idx] = val
 
 
 def read_program(fname):

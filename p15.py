@@ -2,12 +2,16 @@
 
 from intcode import Intcode, read_program
 from collections import defaultdict
+from math import isinf
 
 
 N, S, W, E = range(1, 5)
-delta_dir = {(0, 1): N, (0, -1): S, (1, 0): W, (-1, 0): E}
 
 WALL_STATUS, SUCCESS_STATUS, OXYGEN_STATUS = range(3)
+
+START_COORD = (0, 0)
+
+VISUALIZE = False
 
 
 def apply_delta(coord, delta):
@@ -61,43 +65,75 @@ def render_sparse_grid(grid, coord):
         print(" ".join(c for c in row))
 
 
-coord = (0, 0)
-grid = {coord: SUCCESS_STATUS}
-
-intcode = Intcode(read_program("15.txt"))
-it = intcode.run_program()
-
-remaining_deltas = defaultdict(lambda: list(delta_dir.keys()).copy())
-min_steps = defaultdict(lambda: float("inf"))
+class FoundOxygenException(Exception):
+    pass
 
 
-def travel(coord, steps=0):
-    m = min(min_steps[coord], steps)
-    for delta in delta_dir:
-        m = min(m, min_steps[apply_delta(coord, delta)] + 1)
-    min_steps[coord] = m
+class Traversal:
+    def __init__(self, intcode):
+        self.intcode = intcode
+        self.it = intcode.run_program()
+        self.coord = START_COORD
 
-    deltas = remaining_deltas[coord]
-    while len(deltas) > 0:
-        delta = deltas.pop()
-        new_coord = apply_delta(coord, delta)
-        intcode.inputs.append(delta_dir[delta])
-        status = next(it)
-        grid[new_coord] = status
-        if status != WALL_STATUS:
-            travel(new_coord, steps=steps + 1)
-            intcode.inputs.append(delta_dir[opposite_delta(delta)])
-            assert next(it) != WALL_STATUS
+        self.delta_to_dir = {(0, 1): N, (0, -1): S, (1, 0): W, (-1, 0): E}
+
+    def explore(self, stop_at_oxygen=False):
+        self.grid = {self.coord: SUCCESS_STATUS}
+        self.remaining_deltas = defaultdict(lambda: list(self.delta_to_dir.keys()).copy())
+        self.min_steps = defaultdict(lambda: float("inf"))
+
+        try:
+            self.travel(self.coord, stop_at_oxygen)
+        except FoundOxygenException:
+            pass
+
+    def travel(self, coord, stop_at_oxygen, steps=0):
+        self.coord = coord
+
+        m = min(self.min_steps[coord], steps)
+        for delta in self.delta_to_dir:
+            m = min(m, self.min_steps[apply_delta(coord, delta)] + 1)
+        self.min_steps[coord] = m
+
+        deltas = self.remaining_deltas[coord]
+        while len(deltas) > 0:
+            delta = deltas.pop()
+            new_coord = apply_delta(coord, delta)
+            self.intcode.inputs.append(self.delta_to_dir[delta])
+            status = next(self.it)
+
+            if status == OXYGEN_STATUS and stop_at_oxygen:
+                # Easy way to escape recursion
+                raise FoundOxygenException()
+
+            self.grid[new_coord] = status
+            if status != WALL_STATUS:
+                self.travel(new_coord, steps=steps + 1, stop_at_oxygen=stop_at_oxygen)
+                # Since this path is traversed, go back and keep exploring
+                self.intcode.inputs.append(self.delta_to_dir[opposite_delta(delta)])
+                # Can't be a wall because we just came from here and the grid is not changing
+                assert next(self.it) != WALL_STATUS
 
 
-travel(coord)
+traversal = Traversal(Intcode(read_program("15.txt")))
 
-render_sparse_grid(grid, coord)
+traversal.explore()
+
+if VISUALIZE:
+    render_sparse_grid(traversal.grid, START_COORD)
 
 oxygen_coord = None
-for k, v in grid.items():
+for k, v in traversal.grid.items():
     if v == OXYGEN_STATUS:
         oxygen_coord = k
         break
 
-print("1) Answer", min_steps[oxygen_coord])
+print("1) Answer", traversal.min_steps[oxygen_coord])  # 280
+
+# Reposition at the oxygen
+traversal.explore(stop_at_oxygen=True)
+# Explore starting from the oxygen
+traversal.explore()
+
+# Unreachable positions get +inf, filter those out to find the true max
+print("2) Answer", max(filter(lambda x: not isinf(x), traversal.min_steps.values())))  # 400
